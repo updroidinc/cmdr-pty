@@ -5,6 +5,7 @@ import "fmt"
 import "net/http"
 import "os"
 import "os/exec"
+import "flag"
 
 import "github.com/gorilla/websocket"
 import "github.com/kr/pty"
@@ -87,11 +88,15 @@ func ptyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	var addrFlag string
+	flag.StringVar(&addrFlag, "addr", ":12061", "IP:PORT or :PORT address to listen on")
+
+	flag.Parse()
+
 	http.HandleFunc("/pty", ptyHandler)
 
-	addr := ":12061"
-	err := http.ListenAndServe(addr, nil)
+	err := http.ListenAndServe(addrFlag, nil)
 	if err != nil {
-		fmt.Println("net.http could not listen on address '%s': %s", addr, err)
+		fmt.Println("net.http could not listen on address '%s': %s", addrFlag, err)
 	}
 }
