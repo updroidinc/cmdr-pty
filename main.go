@@ -89,7 +89,7 @@ func ptyHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	http.HandleFunc("/pty", ptyHandler)
 
-	addr := ":12066"
+	addr := ":12061"
 	err := http.ListenAndServe(addr, nil)
 	if err != nil {
 		log.Fatalf("net.http could not listen on address '%s': %s\n", addr, err)
