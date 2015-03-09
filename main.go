@@ -1,7 +1,7 @@
 package main
 
 import "io"
-import "log"
+import "fmt"
 import "net/http"
 import "os"
 import "os/exec"
@@ -16,7 +16,7 @@ func start() (*exec.Cmd, *os.File) {
 	cmd := exec.Command(cmdString)
 	file, err := pty.Start(cmd)
 	if err != nil {
-		log.Fatalf("Failed to start command: %s\n", err)
+		fmt.Println("Failed to start command: %s", err)
 	}
 
 	return cmd, file
@@ -38,7 +38,7 @@ func ptyHandler(w http.ResponseWriter, r *http.Request) {
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Fatalf("Websocket upgrade failed: %s\n", err)
+		fmt.Println("Websocket upgrade failed: %s", err)
 	}
 	defer conn.Close()
 
@@ -51,14 +51,14 @@ func ptyHandler(w http.ResponseWriter, r *http.Request) {
 		for {
 			n, err := file.Read(buf)
 			if err != nil {
-				log.Printf("Failed to read from pty master: %s", err)
+				fmt.Println("Failed to read from pty master: %s", err)
 				return
 			}
 
 			err = conn.WriteMessage(websocket.BinaryMessage, buf[0:n])
 
 			if err != nil {
-				log.Printf("Failed to send %d bytes on websocket: %s", n, err)
+				fmt.Println("Failed to send %d bytes on websocket: %s", n, err)
 				return
 			}
 		}
@@ -69,7 +69,7 @@ func ptyHandler(w http.ResponseWriter, r *http.Request) {
 		mt, payload, err := conn.ReadMessage()
 		if err != nil {
 			if err != io.EOF {
-				log.Printf("conn.ReadMessage failed: %s\n", err)
+				fmt.Println("conn.ReadMessage failed: %s", err)
 				return
 			}
 		}
@@ -78,7 +78,7 @@ func ptyHandler(w http.ResponseWriter, r *http.Request) {
 		case websocket.BinaryMessage:
 			file.Write(payload)
 		default:
-			log.Printf("Invalid message type %d\n", mt)
+			fmt.Println("Invalid message type %d", mt)
 			return
 		}
 	}
@@ -92,6 +92,6 @@ func main() {
 	addr := ":12061"
 	err := http.ListenAndServe(addr, nil)
 	if err != nil {
-		log.Fatalf("net.http could not listen on address '%s': %s\n", addr, err)
+		fmt.Println("net.http could not listen on address '%s': %s", addr, err)
 	}
 }
