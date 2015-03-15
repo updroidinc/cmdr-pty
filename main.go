@@ -47,7 +47,7 @@ func ptyHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Copy everything from the pty master to the websocket.
 	go func() {
-		buf := make([]byte, 128)
+		buf := make([]byte, 256)
 		// TODO: more graceful exit on socket close / process exit
 		for {
 			n, err := file.Read(buf)
