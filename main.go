@@ -6,10 +6,12 @@ import "net/http"
 import "os"
 import "os/exec"
 import "flag"
+import "strings"
+import "strconv"
 
 import "github.com/gorilla/websocket"
 import "github.com/kr/pty"
-// import "github.com/creack/goterm/win"
+import "github.com/creack/goterm/win"
 
 func start() (*exec.Cmd, *os.File) {
 	var err error
@@ -21,18 +23,6 @@ func start() (*exec.Cmd, *os.File) {
 		fmt.Println("Failed to start command: %s", err)
 	}
 
- //    if err := win.SetWinsize(f.Fd(), &win.Winsize{Height: 40, Width: 40}); err != nil {
- //        panic(err)
- //    }
-
- //    if size, err := win.GetWinsize(f.Fd()); err == nil {
- //        println(size.Height, size.Width)
- //    }
-
- //    if rows, cols, err := pty.Getsize(f); err == nil {
- //        println(rows, cols)
- //    }
-
 	return cmd, f
 }
 
@@ -41,7 +31,7 @@ func stop(pty *os.File, cmd *exec.Cmd) {
 	cmd.Wait()
 }
 
-func ptyHandler(w http.ResponseWriter, r *http.Request) {
+func ptyHandler(w http.ResponseWriter, r *http.Request, sizeFlag string) {
 	var upgrader = websocket.Upgrader{
 		ReadBufferSize:  1,
 		WriteBufferSize: 1,
@@ -57,6 +47,13 @@ func ptyHandler(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	cmd, file := start()
+
+	size := strings.Split(sizeFlag, "x")
+	x, _ := strconv.Atoi(size[0])
+	y, _ := strconv.Atoi(size[1])
+	if err := win.SetWinsize(file.Fd(), &win.Winsize{Height: uint16(x), Width: uint16(y)}); err != nil {
+        panic(err)
+    }
 
 	// Copy everything from the pty master to the websocket.
 	go func() {
@@ -102,10 +99,13 @@ func ptyHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	addrFlag := flag.String("addr", ":12061", "IP:PORT or :PORT address to listen on")
+	sizeFlag := flag.String("size", "80x24", "initial size for the tty")
 
 	flag.Parse()
 
-	http.HandleFunc("/pty", ptyHandler)
+	http.HandleFunc("/pty", func(w http.ResponseWriter, r *http.Request) {
+              ptyHandler(w, r, *sizeFlag)
+       })
 
 	err := http.ListenAndServe(*addrFlag, nil)
 	if err != nil {
