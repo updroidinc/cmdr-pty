@@ -101,14 +101,13 @@ func ptyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	var addrFlag string
-	flag.StringVar(&addrFlag, "addr", ":12061", "IP:PORT or :PORT address to listen on")
+	addrFlag := flag.String("addr", ":12061", "IP:PORT or :PORT address to listen on")
 
 	flag.Parse()
 
 	http.HandleFunc("/pty", ptyHandler)
 
-	err := http.ListenAndServe(addrFlag, nil)
+	err := http.ListenAndServe(*addrFlag, nil)
 	if err != nil {
 		fmt.Println("net.http could not listen on address '%s': %s", addrFlag, err)
 	}
