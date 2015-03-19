@@ -9,18 +9,31 @@ import "flag"
 
 import "github.com/gorilla/websocket"
 import "github.com/kr/pty"
+// import "github.com/creack/goterm/win"
 
 func start() (*exec.Cmd, *os.File) {
 	var err error
 
 	cmdString := "/bin/bash"
 	cmd := exec.Command(cmdString)
-	file, err := pty.Start(cmd)
+	f, err := pty.Start(cmd)
 	if err != nil {
 		fmt.Println("Failed to start command: %s", err)
 	}
 
-	return cmd, file
+ //    if err := win.SetWinsize(f.Fd(), &win.Winsize{Height: 40, Width: 40}); err != nil {
+ //        panic(err)
+ //    }
+
+ //    if size, err := win.GetWinsize(f.Fd()); err == nil {
+ //        println(size.Height, size.Width)
+ //    }
+
+ //    if rows, cols, err := pty.Getsize(f); err == nil {
+ //        println(rows, cols)
+ //    }
+
+	return cmd, f
 }
 
 func stop(pty *os.File, cmd *exec.Cmd) {
