@@ -49,9 +49,9 @@ func ptyHandler(w http.ResponseWriter, r *http.Request, sizeFlag string) {
 	cmd, file := start()
 
 	size := strings.Split(sizeFlag, "x")
-	x, _ := strconv.Atoi(size[0])
-	y, _ := strconv.Atoi(size[1])
-	if err := win.SetWinsize(file.Fd(), &win.Winsize{Height: uint16(x), Width: uint16(y)}); err != nil {
+	cols, _ := strconv.Atoi(size[0])
+	lines, _ := strconv.Atoi(size[1])
+	if err := win.SetWinsize(file.Fd(), &win.Winsize{Height: uint16(lines), Width: uint16(cols)}); err != nil {
         panic(err)
     }
 
