@@ -13,7 +13,7 @@ import "github.com/gorilla/websocket"
 import "github.com/kr/pty"
 import "github.com/creack/goterm/win"
 
-func start() (*exec.Cmd, *os.File) {
+func start() (*os.File, *exec.Cmd) {
 	var err error
 
 	cmdString := "/bin/bash"
@@ -23,7 +23,7 @@ func start() (*exec.Cmd, *os.File) {
 		fmt.Println("Failed to start command: %s", err)
 	}
 
-	return cmd, f
+	return f, cmd
 }
 
 func stop(pty *os.File, cmd *exec.Cmd) {
@@ -87,7 +87,7 @@ func ptyHandler(w http.ResponseWriter, r *http.Request, sizeFlag string) {
 	}
 	defer conn.Close()
 
-	cmd, file := start()
+	file, cmd := start()
 
 	size := strings.Split(sizeFlag, "x")
 	cols, _ := strconv.Atoi(size[0])
