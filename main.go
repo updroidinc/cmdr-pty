@@ -18,21 +18,21 @@ func start() (*os.File, *exec.Cmd) {
 
 	cmdString := "/bin/bash"
 	cmd := exec.Command(cmdString)
-	f, err := pty.Start(cmd)
+	ptym, err := pty.Start(cmd)
 	if err != nil {
 		fmt.Println("Failed to start command: %s", err)
 	}
 
-	return f, cmd
+	return ptym, cmd
 }
 
-func stop(pty *os.File, cmd *exec.Cmd) {
-	pty.Close()
+func stop(ptym *os.File, cmd *exec.Cmd) {
+	ptym.Close()
 	cmd.Wait()
 }
 
 // Read from the websocket, copying to the pty master.
-func handleInput(file *os.File, conn *websocket.Conn) {
+func handleInput(ptym *os.File, conn *websocket.Conn) {
 	for {
 		mt, payload, err := conn.ReadMessage()
 		if err != nil {
@@ -44,7 +44,7 @@ func handleInput(file *os.File, conn *websocket.Conn) {
 
 		switch mt {
 		case websocket.BinaryMessage:
-			file.Write(payload)
+			ptym.Write(payload)
 		default:
 			fmt.Println("Invalid message type %d", mt)
 			return
@@ -53,11 +53,11 @@ func handleInput(file *os.File, conn *websocket.Conn) {
 }
 
 // Copy everything from the pty master to the websocket.
-func handleOutput(file *os.File, conn *websocket.Conn) {
+func handleOutput(ptym *os.File, conn *websocket.Conn) {
 	buf := make([]byte, 512)
 	// TODO: more graceful exit on socket close / process exit
 	for {
-		n, err := file.Read(buf)
+		n, err := ptym.Read(buf)
 		if err != nil {
 			fmt.Println("Failed to read from pty master: ", err)
 			return
@@ -87,23 +87,23 @@ func ptyHandler(w http.ResponseWriter, r *http.Request, sizeFlag string) {
 	}
 	defer conn.Close()
 
-	file, cmd := start()
+	ptym, cmd := start()
 
 	size := strings.Split(sizeFlag, "x")
 	cols, _ := strconv.Atoi(size[0])
 	lines, _ := strconv.Atoi(size[1])
-	if err := win.SetWinsize(file.Fd(), &win.Winsize{Height: uint16(lines), Width: uint16(cols)}); err != nil {
+	if err := win.SetWinsize(ptym.Fd(), &win.Winsize{Height: uint16(lines), Width: uint16(cols)}); err != nil {
         panic(err)
     }
 
 
 	go func() {
-		handleOutput(file, conn)
+		handleOutput(ptym, conn)
 	}()
 
-	handleInput(file, conn)
+	handleInput(ptym, conn)
 
-	stop(file, cmd)
+	stop(ptym, cmd)
 }
 
 func main() {
