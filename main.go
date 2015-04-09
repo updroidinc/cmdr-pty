@@ -31,6 +31,47 @@ func stop(pty *os.File, cmd *exec.Cmd) {
 	cmd.Wait()
 }
 
+// Read from the websocket, copying to the pty master.
+func handleInput(file *os.File, conn *websocket.Conn) {
+	for {
+		mt, payload, err := conn.ReadMessage()
+		if err != nil {
+			if err != io.EOF {
+				fmt.Println("conn.ReadMessage failed: ", err)
+				return
+			}
+		}
+
+		switch mt {
+		case websocket.BinaryMessage:
+			file.Write(payload)
+		default:
+			fmt.Println("Invalid message type %d", mt)
+			return
+		}
+	}
+}
+
+// Copy everything from the pty master to the websocket.
+func handleOutput(file *os.File, conn *websocket.Conn) {
+	buf := make([]byte, 512)
+	// TODO: more graceful exit on socket close / process exit
+	for {
+		n, err := file.Read(buf)
+		if err != nil {
+			fmt.Println("Failed to read from pty master: ", err)
+			return
+		}
+
+		err = conn.WriteMessage(websocket.BinaryMessage, buf[0:n])
+
+		if err != nil {
+			fmt.Println("Failed to send %d bytes on websocket: %s", n, err)
+			return
+		}
+	}
+}
+
 func ptyHandler(w http.ResponseWriter, r *http.Request, sizeFlag string) {
 	var upgrader = websocket.Upgrader{
 		ReadBufferSize:  1,
@@ -55,44 +96,12 @@ func ptyHandler(w http.ResponseWriter, r *http.Request, sizeFlag string) {
         panic(err)
     }
 
-	// Copy everything from the pty master to the websocket.
+
 	go func() {
-		buf := make([]byte, 512)
-		// TODO: more graceful exit on socket close / process exit
-		for {
-			n, err := file.Read(buf)
-			if err != nil {
-				fmt.Println("Failed to read from pty master: %s", err)
-				return
-			}
-
-			err = conn.WriteMessage(websocket.BinaryMessage, buf[0:n])
-
-			if err != nil {
-				fmt.Println("Failed to send %d bytes on websocket: %s", n, err)
-				return
-			}
-		}
+		handleOutput(file, conn)
 	}()
 
-	// Read from the websocket, copying to the pty master.
-	for {
-		mt, payload, err := conn.ReadMessage()
-		if err != nil {
-			if err != io.EOF {
-				fmt.Println("conn.ReadMessage failed: %s", err)
-				return
-			}
-		}
-
-		switch mt {
-		case websocket.BinaryMessage:
-			file.Write(payload)
-		default:
-			fmt.Println("Invalid message type %d", mt)
-			return
-		}
-	}
+	handleInput(file, conn)
 
 	stop(file, cmd)
 }
