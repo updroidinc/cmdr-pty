@@ -43,6 +43,11 @@ func handleInput(ptym *os.File, conn *websocket.Conn) {
 			}
 		}
 
+		if mt == -1 {
+			// The client has likely disconnected.
+			return
+		}
+
 		switch mt {
 		case websocket.BinaryMessage:
 			ptym.Write(payload)
