@@ -26,8 +26,9 @@ func start() (*os.File, *exec.Cmd) {
 	return ptym, cmd
 }
 
-func stop(ptym *os.File, cmd *exec.Cmd) {
+func stop(ptym *os.File, cmd *exec.Cmd, conn *websocket.Conn) {
 	ptym.Close()
+	conn.Close()
 	cmd.Wait()
 }
 
@@ -85,7 +86,6 @@ func ptyHandler(w http.ResponseWriter, r *http.Request, sizeFlag string) {
 	if err != nil {
 		fmt.Println("Websocket upgrade failed: %s", err)
 	}
-	defer conn.Close()
 
 	ptym, cmd := start()
 
@@ -93,17 +93,28 @@ func ptyHandler(w http.ResponseWriter, r *http.Request, sizeFlag string) {
 	cols, _ := strconv.Atoi(size[0])
 	lines, _ := strconv.Atoi(size[1])
 	if err := win.SetWinsize(ptym.Fd(), &win.Winsize{Height: uint16(lines), Width: uint16(cols)}); err != nil {
-        panic(err)
-    }
-
+		panic(err)
+	}
 
 	go func() {
 		handleOutput(ptym, conn)
 	}()
 
-	handleInput(ptym, conn)
+	go func() {
+		handleInput(ptym, conn)
+	}()
 
-	stop(ptym, cmd)
+	for {
+		var size string
+		_, scanErr := fmt.Scanln(&size)
+		if scanErr != nil {
+			fmt.Println("scan failed: ", scanErr)
+		}
+
+		fmt.Println("done scanning: ", size)
+	}
+
+	stop(ptym, cmd, conn)
 }
 
 func main() {
@@ -113,8 +124,8 @@ func main() {
 	flag.Parse()
 
 	http.HandleFunc("/pty", func(w http.ResponseWriter, r *http.Request) {
-              ptyHandler(w, r, *sizeFlag)
-       })
+		ptyHandler(w, r, *sizeFlag)
+	})
 
 	err := http.ListenAndServe(*addrFlag, nil)
 	if err != nil {
