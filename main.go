@@ -78,6 +78,15 @@ func handleOutput(ptym *os.File, conn *websocket.Conn) {
 	}
 }
 
+func setPtySize(ptym *os.File, size string) {
+	sizeArr := strings.Split(size, "x")
+	cols, _ := strconv.Atoi(sizeArr[0])
+	lines, _ := strconv.Atoi(sizeArr[1])
+	if err := win.SetWinsize(ptym.Fd(), &win.Winsize{Height: uint16(lines), Width: uint16(cols)}); err != nil {
+		panic(err)
+	}
+}
+
 func ptyHandler(w http.ResponseWriter, r *http.Request, sizeFlag string) {
 	var upgrader = websocket.Upgrader{
 		ReadBufferSize:  1,
@@ -93,13 +102,7 @@ func ptyHandler(w http.ResponseWriter, r *http.Request, sizeFlag string) {
 	}
 
 	ptym, cmd := start()
-
-	size := strings.Split(sizeFlag, "x")
-	cols, _ := strconv.Atoi(size[0])
-	lines, _ := strconv.Atoi(size[1])
-	if err := win.SetWinsize(ptym.Fd(), &win.Winsize{Height: uint16(lines), Width: uint16(cols)}); err != nil {
-		panic(err)
-	}
+	setPtySize(ptym, sizeFlag)
 
 	go func() {
 		handleOutput(ptym, conn)
@@ -109,14 +112,15 @@ func ptyHandler(w http.ResponseWriter, r *http.Request, sizeFlag string) {
 		handleInput(ptym, conn)
 	}()
 
+	// Listen for a new winsize on stdin.
 	for {
-		var size string
-		_, scanErr := fmt.Scanln(&size)
+		var newSize string
+		_, scanErr := fmt.Scanln(&newSize)
 		if scanErr != nil {
 			fmt.Println("scan failed: ", scanErr)
 		}
 
-		fmt.Println("done scanning: ", size)
+		setPtySize(ptym, newSize)
 	}
 
 	stop(ptym, cmd, conn)
