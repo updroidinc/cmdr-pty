@@ -20,7 +20,7 @@ func start() (*os.File, *exec.Cmd) {
 	cmd := exec.Command(cmdString)
 	ptym, err := pty.Start(cmd)
 	if err != nil {
-		fmt.Println("Failed to start command: %s", err)
+		fmt.Println("Failed to start command: ", err)
 	}
 
 	return ptym, cmd
@@ -47,7 +47,7 @@ func handleInput(ptym *os.File, conn *websocket.Conn) {
 		case websocket.BinaryMessage:
 			ptym.Write(payload)
 		default:
-			fmt.Println("Invalid message type %d", mt)
+			fmt.Println("Invalid message type: ", mt)
 			return
 		}
 	}
@@ -84,7 +84,7 @@ func ptyHandler(w http.ResponseWriter, r *http.Request, sizeFlag string) {
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		fmt.Println("Websocket upgrade failed: %s", err)
+		fmt.Println("Websocket upgrade failed: ", err)
 	}
 
 	ptym, cmd := start()
