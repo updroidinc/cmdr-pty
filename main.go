@@ -80,8 +80,8 @@ func handleOutput(ptym *os.File, conn *websocket.Conn) {
 
 func setPtySize(ptym *os.File, size string) {
 	sizeArr := strings.Split(size, "x")
-	cols, _ := strconv.Atoi(sizeArr[0])
-	lines, _ := strconv.Atoi(sizeArr[1])
+	lines, _ := strconv.Atoi(sizeArr[0])
+	cols, _ := strconv.Atoi(sizeArr[1])
 	if err := win.SetWinsize(ptym.Fd(), &win.Winsize{Height: uint16(lines), Width: uint16(cols)}); err != nil {
 		panic(err)
 	}
@@ -128,7 +128,7 @@ func ptyHandler(w http.ResponseWriter, r *http.Request, sizeFlag string) {
 
 func main() {
 	addrFlag := flag.String("addr", ":12061", "IP:PORT or :PORT address to listen on")
-	sizeFlag := flag.String("size", "80x24", "initial size for the tty")
+	sizeFlag := flag.String("size", "24x80", "initial size for the tty")
 
 	flag.Parse()
 
