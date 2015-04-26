@@ -121,6 +121,7 @@ func ptyHandler(w http.ResponseWriter, r *http.Request, sizeFlag string) {
 		}
 
 		setPtySize(ptym, newSize)
+		fmt.Println("new size: ", newSize)
 	}
 
 	stop(ptym, cmd, conn)
@@ -133,6 +134,7 @@ func main() {
 	flag.Parse()
 
 	http.HandleFunc("/pty", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("client connected.")
 		ptyHandler(w, r, *sizeFlag)
 	})
 
