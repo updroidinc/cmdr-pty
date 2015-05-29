@@ -10,6 +10,7 @@ import "os/exec"
 import "flag"
 import "strings"
 import "strconv"
+import "unicode/utf8"
 
 import "github.com/gorilla/websocket"
 import "github.com/kr/pty"
@@ -63,7 +64,8 @@ func handleInput(ptym *os.File, conn *websocket.Conn) {
 // Copy everything from the pty master to the websocket.
 func handleOutput(ptym *os.File, conn *websocket.Conn) {
 	buf := make([]byte, 512)
-	// TODO: more graceful exit on socket close / process exit
+	var payload, overflow []byte
+	// TODO: more graceful exit on socket close / process exit.
 	for {
 		n, err := ptym.Read(buf)
 		if err != nil {
@@ -71,12 +73,27 @@ func handleOutput(ptym *os.File, conn *websocket.Conn) {
 			return
 		}
 
-		err = conn.WriteMessage(websocket.BinaryMessage, buf[0:n])
+		// Empty the overflow from the last read into the payload first.
+		payload = append(payload[0:], overflow...)
+		overflow = nil
+		// Then empty the new buf read into the payload.
+		payload = append(payload, buf[:n]...)
 
+		// Strip out any incomplete utf-8 from current payload into overflow.
+		for !utf8.Valid(payload) {
+			overflow = append(overflow, payload[len(payload) - 1:len(payload)]...)
+			payload = payload[:len(payload) - 1]
+		}
+
+		// Send out the finished payload.
+		err = conn.WriteMessage(websocket.BinaryMessage, payload[:len(payload)])
 		if err != nil {
-			fmt.Println("Failed to send %d bytes on websocket: %s", n, err)
+			fmt.Println("Failed to send bytes on websocket: ", err)
 			return
 		}
+
+		// Empty the payload.
+		payload = nil
 	}
 }
 
