@@ -35,15 +35,17 @@ func handleOutput(ptym *os.File, conn *websocket.Conn) {
 
 		// Strip out any incomplete utf-8 from current payload into overflow.
 		for !utf8.Valid(payload) {
-			overflow = append(overflow, payload[len(payload)-1:len(payload)]...)
+			overflow = append(overflow[:0], append(payload[len(payload)-1:], overflow[0:]...)...)
 			payload = payload[:len(payload)-1]
 		}
 
-		// Send out the finished payload.
-		err = conn.WriteMessage(websocket.BinaryMessage, payload[:len(payload)])
-		if err != nil {
-			fmt.Println("failed to send bytes on websocket: ", err)
-			return
+		// Send out the finished payload as long as it's not empty.
+		if len(payload) >= 1 {
+			err = conn.WriteMessage(websocket.BinaryMessage, payload[:len(payload)])
+			if err != nil {
+				fmt.Println("failed to send bytes on websocket: ", err)
+				return
+			}
 		}
 
 		// Empty the payload.
