@@ -81,8 +81,8 @@ func handleOutput(ptym *os.File, conn *websocket.Conn) {
 
 		// Strip out any incomplete utf-8 from current payload into overflow.
 		for !utf8.Valid(payload) {
-			overflow = append(overflow, payload[len(payload) - 1:len(payload)]...)
-			payload = payload[:len(payload) - 1]
+			overflow = append(overflow, payload[len(payload)-1:len(payload)]...)
+			payload = payload[:len(payload)-1]
 		}
 
 		// Send out the finished payload.
