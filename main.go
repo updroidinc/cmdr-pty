@@ -1,65 +1,19 @@
 package main
 
 import "io"
+import "flag"
 import "fmt"
 import "net"
 import "net/http"
-import "log"
 import "os"
 import "os/exec"
-import "flag"
 import "strings"
 import "strconv"
 import "unicode/utf8"
 
-import "github.com/gorilla/websocket"
 import "github.com/kr/pty"
 import "github.com/creack/goterm/win"
-
-func start() (*os.File, *exec.Cmd) {
-	var err error
-
-	cmdString := "/bin/bash"
-	cmd := exec.Command(cmdString)
-	ptym, err := pty.Start(cmd)
-	if err != nil {
-		fmt.Println("Failed to start command: ", err)
-	}
-
-	return ptym, cmd
-}
-
-func stop(ptym *os.File, cmd *exec.Cmd, conn *websocket.Conn) {
-	ptym.Close()
-	conn.Close()
-	cmd.Wait()
-}
-
-// Read from the websocket, copying to the pty master.
-func handleInput(ptym *os.File, conn *websocket.Conn) {
-	for {
-		mt, payload, err := conn.ReadMessage()
-		if err != nil {
-			if err != io.EOF {
-				fmt.Println("conn.ReadMessage failed: ", err)
-				return
-			}
-		}
-
-		if mt == -1 {
-			// The client has likely disconnected.
-			return
-		}
-
-		switch mt {
-		case websocket.BinaryMessage:
-			ptym.Write(payload)
-		default:
-			fmt.Println("Invalid message type: ", mt)
-			return
-		}
-	}
-}
+import "github.com/gorilla/websocket"
 
 // Copy everything from the pty master to the websocket.
 func handleOutput(ptym *os.File, conn *websocket.Conn) {
@@ -69,7 +23,7 @@ func handleOutput(ptym *os.File, conn *websocket.Conn) {
 	for {
 		n, err := ptym.Read(buf)
 		if err != nil {
-			fmt.Println("Failed to read from pty master: ", err)
+			fmt.Println("failed to read from pty master: ", err)
 			return
 		}
 
@@ -88,12 +42,37 @@ func handleOutput(ptym *os.File, conn *websocket.Conn) {
 		// Send out the finished payload.
 		err = conn.WriteMessage(websocket.BinaryMessage, payload[:len(payload)])
 		if err != nil {
-			fmt.Println("Failed to send bytes on websocket: ", err)
+			fmt.Println("failed to send bytes on websocket: ", err)
 			return
 		}
 
 		// Empty the payload.
 		payload = nil
+	}
+}
+
+// Read from the websocket, copying to the pty master.
+func handleInput(ptym *os.File, conn *websocket.Conn) {
+	for {
+		mt, payload, err := conn.ReadMessage()
+		if err != nil {
+			if err != io.EOF {
+				fmt.Println("conn.ReadMessage failed: ", err)
+				return
+			}
+		}
+
+		// The client has likely disconnected.
+		if mt == -1 {
+			return
+		}
+
+		if mt == websocket.BinaryMessage {
+			ptym.Write(payload)
+		} else {
+			fmt.Println("invalid message type: ", mt)
+			return
+		}
 	}
 }
 
@@ -104,6 +83,25 @@ func setPtySize(ptym *os.File, size string) {
 	if err := win.SetWinsize(ptym.Fd(), &win.Winsize{Height: uint16(lines), Width: uint16(cols)}); err != nil {
 		panic(err)
 	}
+}
+
+func start() (*os.File, *exec.Cmd) {
+	var err error
+
+	cmdString := "/bin/bash"
+	cmd := exec.Command(cmdString)
+	ptym, err := pty.Start(cmd)
+	if err != nil {
+		fmt.Println("failed to start command: ", err)
+	}
+
+	return ptym, cmd
+}
+
+func stop(ptym *os.File, cmd *exec.Cmd, conn *websocket.Conn) {
+	ptym.Close()
+	conn.Close()
+	cmd.Wait()
 }
 
 func ptyHandler(w http.ResponseWriter, r *http.Request, sizeFlag string) {
@@ -117,7 +115,7 @@ func ptyHandler(w http.ResponseWriter, r *http.Request, sizeFlag string) {
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		fmt.Println("Websocket upgrade failed: ", err)
+		fmt.Println("websocket upgrade failed: ", err)
 	}
 
 	ptym, cmd := start()
@@ -159,13 +157,13 @@ func main() {
 
 	listener, err := net.Listen("tcp", *addrFlag)
 	if err != nil {
-		log.Fatal("listen: %s", err)
+		fmt.Println("listen error: ", err)
 	}
 
-	fmt.Println("now listening on: " + listener.Addr().String())
+	fmt.Println("now listening on: ", listener.Addr().String())
 
 	err = http.Serve(listener, nil)
 	if err != nil {
-		fmt.Println("net.http could not listen on address '%s': %s", addrFlag, err)
+		fmt.Printf("net.http could not listen on address '%s': %s\n", addrFlag, err)
 	}
 }
