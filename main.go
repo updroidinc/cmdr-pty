@@ -2,7 +2,9 @@ package main
 
 import "io"
 import "fmt"
+import "net"
 import "net/http"
+import "log"
 import "os"
 import "os/exec"
 import "flag"
@@ -128,7 +130,7 @@ func ptyHandler(w http.ResponseWriter, r *http.Request, sizeFlag string) {
 }
 
 func main() {
-	addrFlag := flag.String("addr", ":12061", "IP:PORT or :PORT address to listen on")
+	addrFlag := flag.String("addr", ":0", "IP:PORT or :PORT address to listen on")
 	sizeFlag := flag.String("size", "24x80", "initial size for the tty")
 
 	flag.Parse()
@@ -138,7 +140,14 @@ func main() {
 		ptyHandler(w, r, *sizeFlag)
 	})
 
-	err := http.ListenAndServe(*addrFlag, nil)
+	listener, err := net.Listen("tcp", *addrFlag)
+	if err != nil {
+		log.Fatal("listen: %s", err)
+	}
+
+	fmt.Println("now listening on: " + listener.Addr().String())
+
+	err = http.Serve(listener, nil)
 	if err != nil {
 		fmt.Println("net.http could not listen on address '%s': %s", addrFlag, err)
 	}
