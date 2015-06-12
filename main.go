@@ -58,7 +58,8 @@ func main() {
 			fmt.Println("listen error: ", err)
 		}
 
-		fmt.Println("now listening on: ", listener.Addr().String())
+		_, port, _ := net.SplitHostPort(listener.Addr().String())
+		fmt.Println("listening on port:", port)
 
 		err = http.Serve(listener, nil)
 		if err != nil {
@@ -77,7 +78,8 @@ func main() {
 	        return
 	    }
 
-	    fmt.Println("now listening on: ", listener.Addr().String())
+		_, port, _ := net.SplitHostPort(listener.Addr().String())
+		fmt.Println("listening on port:", port)
 
 	    for {
 	        conn, err := listener.AcceptTCP()
