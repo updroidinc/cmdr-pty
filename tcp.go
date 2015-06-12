@@ -1,15 +1,13 @@
 package main
 
-import "io"
 import "fmt"
-import "net/http"
+import "net"
 import "os"
+
 import "unicode/utf8"
 
-import "github.com/gorilla/websocket"
-
-// Copy everything from the pty master to the websocket.
-func handleOutputWs(ptym *os.File, conn *websocket.Conn) {
+// Copy everything from the pty master to the socket.
+func handleOutputSock(ptym *os.File, conn *net.TCPConn) {
 	buf := make([]byte, 512)
 	var payload, overflow []byte
 	// TODO: more graceful exit on socket close / process exit.
@@ -34,11 +32,10 @@ func handleOutputWs(ptym *os.File, conn *websocket.Conn) {
 
 		// Send out the finished payload as long as it's not empty.
 		if len(payload) >= 1 {
-			err = conn.WriteMessage(websocket.BinaryMessage, payload[:len(payload)])
-			if err != nil {
-				fmt.Println("failed to send bytes on websocket: ", err)
-				return
-			}
+			_, err = conn.Write(payload)
+	        if err != nil {
+	            fmt.Println("Write: ", err)
+	        }
 		}
 
 		// Empty the payload.
@@ -47,57 +44,28 @@ func handleOutputWs(ptym *os.File, conn *websocket.Conn) {
 }
 
 // Read from the websocket, copying to the pty master.
-func handleInputWs(ptym *os.File, conn *websocket.Conn) {
+func handleInputSock(ptym *os.File, conn *net.TCPConn) {
 	for {
-		mt, payload, err := conn.ReadMessage()
-		if err != nil {
-			if err != io.EOF {
-				fmt.Println("conn.ReadMessage failed: ", err)
-				return
-			}
-		}
+        buf := make([]byte, 512)
+        _, err := conn.Read(buf)
+        if err != nil {
+            return
+        }
 
-		// The client has likely disconnected.
-		if mt == -1 {
-			return
-		}
-
-		if mt == websocket.BinaryMessage {
-			ptym.Write(payload)
-		} else {
-			fmt.Println("invalid message type: ", mt)
-			return
-		}
+		ptym.Write(buf)
 	}
 }
 
-func ptyHandlerWs(w http.ResponseWriter, r *http.Request, sizeFlag string) {
-	var upgrader = websocket.Upgrader{
-		ReadBufferSize:  1,
-		WriteBufferSize: 1,
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
-	}
-
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		fmt.Println("websocket upgrade failed: ", err)
-	}
-
-	ptySetupWs(conn, sizeFlag)
-}
-
-func ptySetupWs(ws *websocket.Conn, sizeFlag string) {
+func ptySetupSock(conn *net.TCPConn, sizeFlag string) {
 	ptym, cmd := start()
 	setPtySize(ptym, sizeFlag)
 
 	go func() {
-		handleOutputWs(ptym, ws)
+		handleOutputSock(ptym, conn)
 	}()
 
 	go func() {
-		handleInputWs(ptym, ws)
+		handleInputSock(ptym, conn)
 	}()
 
 	// Listen for a new winsize on stdin.
@@ -113,5 +81,5 @@ func ptySetupWs(ws *websocket.Conn, sizeFlag string) {
 	}
 
 	stop(ptym, cmd)
-	ws.Close()
+	conn.Close()
 }

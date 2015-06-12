@@ -41,25 +41,54 @@ func stop(ptym *os.File, cmd *exec.Cmd) {
 
 
 func main() {
+	protocolFlag := flag.String("protocol", "websocket", "specify websocket or tcp")
 	addrFlag := flag.String("addr", ":0", "IP:PORT or :PORT address to listen on")
 	sizeFlag := flag.String("size", "24x80", "initial size for the tty")
 
 	flag.Parse()
 
-	http.HandleFunc("/pty", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("client connected.")
-		ptyHandler(w, r, *sizeFlag)
-	})
+	if *protocolFlag == "websocket" {
+		http.HandleFunc("/pty", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Println("client connected.")
+			ptyHandlerWs(w, r, *sizeFlag)
+		})
 
-	listener, err := net.Listen("tcp", *addrFlag)
-	if err != nil {
-		fmt.Println("listen error: ", err)
-	}
+		listener, err := net.Listen("tcp", *addrFlag)
+		if err != nil {
+			fmt.Println("listen error: ", err)
+		}
 
-	fmt.Println("now listening on: ", listener.Addr().String())
+		fmt.Println("now listening on: ", listener.Addr().String())
 
-	err = http.Serve(listener, nil)
-	if err != nil {
-		fmt.Printf("net.http could not listen on address '%s': %s\n", addrFlag, err)
+		err = http.Serve(listener, nil)
+		if err != nil {
+			fmt.Printf("net.http could not listen on address '%s': %s\n", addrFlag, err)
+		}
+	} else {
+		addr, err := net.ResolveTCPAddr("tcp", *addrFlag)
+		if err != nil {
+	        fmt.Println("resolve error", err)
+	        return
+	    }
+
+		listener, err := net.ListenTCP("tcp", addr)
+	    if err != nil {
+	        fmt.Println("listen error", err)
+	        return
+	    }
+
+	    fmt.Println("now listening on: ", listener.Addr().String())
+
+	    for {
+	        conn, err := listener.AcceptTCP()
+	        if err != nil {
+	            fmt.Println("accept error", err)
+	            return
+	        }
+
+	        fmt.Println("client connected.")
+
+	        go ptySetupSock(conn, *sizeFlag)
+	    }
 	}
 }
