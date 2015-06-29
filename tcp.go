@@ -47,11 +47,12 @@ func handleOutputSock(ptym *os.File, conn *net.TCPConn) {
 func handleInputSock(ptym *os.File, conn *net.TCPConn) {
 	for {
         buf := make([]byte, 512)
-        _, err := conn.Read(buf)
+        bytes, err := conn.Read(buf)
         if err != nil {
             return
         }
 
+        buf = buf[:bytes]
 		ptym.Write(buf)
 	}
 }
