@@ -50,15 +50,15 @@ func handleOutputWs(ptym *os.File, conn *websocket.Conn) {
 func handleInputWs(ptym *os.File, conn *websocket.Conn) {
 	for {
 		mt, payload, err := conn.ReadMessage()
-		if err != nil {
-			if err != io.EOF {
-				fmt.Println("conn.ReadMessage failed: ", err)
-				return
-			}
-		}
 
 		// The client has likely disconnected.
 		if mt == -1 {
+			fmt.Println("client disconnected.")
+			return
+		}
+
+		if err != nil && err != io.EOF {
+			fmt.Println("conn.ReadMessage failed: ", err)
 			return
 		}
 
