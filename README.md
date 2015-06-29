@@ -2,17 +2,25 @@
 
 A websocket wrapper for a pty written in Go.
 
-Connect to a terminal emulator front-end via websocket. Originally developed for use with [Terminal] in [UpDroid Commander].
+Connect to a terminal emulator front-end via websocket or server-side tcp socket. Originally developed for use with [Terminal] in [UpDroid Commander].
 
 ## Usage
 
 See `cmdr-pty --help` for usage:
 
 ```
-Usage of ./cmdr-pty:
-  -addr=":0": IP:PORT or :PORT address to listen on
-  -size="24x80": initial size for the tty
+usage: cmdr-pty [<flags>]
+
+Flags:
+  --help              Show help (also see --help-long and --help-man).
+  -p, --protocol="websocket"  
+                      specify websocket or tcp
+  -a, --addr=":0"     IP:PORT or :PORT address to listen on
+  -s, --size="25x80"  initial size for the tty
+
 ```
+
+Use websocket mode for direct connection between client-side in browser and cmdr-pty. Use tcp mode if you have another server-side application to connect via tcp port.
 
 Resize the terminal by entering (rows)x(columns) into stdin.
 
