@@ -43,7 +43,7 @@ func stop(ptym *os.File, cmd *exec.Cmd) {
 func main() {
 	protocolFlag := kingpin.Flag("protocol", "specify websocket or tcp").Short('p').Default("websocket").String()
 	addrFlag := kingpin.Flag("addr", "IP:PORT or :PORT address to listen on").Short('a').Default(":0").String()
-	sizeFlag := kingpin.Flag("size", "initial size for the tty").Short('s').Default("24x80").String()
+	sizeFlag := kingpin.Flag("size", "initial size for the tty").Short('s').Default("25x80").String()
 
 	kingpin.Parse()
 
