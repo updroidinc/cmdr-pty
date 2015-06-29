@@ -1,6 +1,5 @@
 package main
 
-import "flag"
 import "fmt"
 import "net"
 import "net/http"
@@ -11,6 +10,7 @@ import "strconv"
 
 import "github.com/kr/pty"
 import "github.com/creack/goterm/win"
+import "gopkg.in/alecthomas/kingpin.v2"
 
 func setPtySize(ptym *os.File, size string) {
 	sizeArr := strings.Split(size, "x")
@@ -41,11 +41,11 @@ func stop(ptym *os.File, cmd *exec.Cmd) {
 
 
 func main() {
-	protocolFlag := flag.String("protocol", "websocket", "specify websocket or tcp")
-	addrFlag := flag.String("addr", ":0", "IP:PORT or :PORT address to listen on")
-	sizeFlag := flag.String("size", "24x80", "initial size for the tty")
+	protocolFlag := kingpin.Flag("protocol", "specify websocket or tcp").Short('p').Default("websocket").String()
+	addrFlag := kingpin.Flag("addr", "IP:PORT or :PORT address to listen on").Short('a').Default(":0").String()
+	sizeFlag := kingpin.Flag("size", "initial size for the tty").Short('s').Default("24x80").String()
 
-	flag.Parse()
+	kingpin.Parse()
 
 	if *protocolFlag == "websocket" {
 		http.HandleFunc("/pty", func(w http.ResponseWriter, r *http.Request) {
